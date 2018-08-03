@@ -1,1 +1,1 @@
-# jubjub_pythob
+# jubjub_python
