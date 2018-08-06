@@ -50,7 +50,7 @@ class DomainElement(object):
 
    # square-and-multiply algorithm for fast exponentiation
    def __pow__(self, n):
-      if type(n) is not int:
+      if type(n) not in (int,long):
          raise TypeError
 
       Q = self
@@ -70,7 +70,7 @@ class DomainElement(object):
 
    # requires the additional % operator (i.e. a Euclidean Domain)
    def powmod(self, n, modulus):
-      if type(n) is not int:
+      if type(n) not in (int,long):
          raise TypeError
 
       Q = self

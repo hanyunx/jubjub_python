@@ -1,27 +1,25 @@
-# Twisted Edwards Curve
-class TwistedEdwardsCurve(object):
-   def __init__(self, a, d):
+
+class EllipticCurve(object):
+   def __init__(self, a, b):
       # assume we're already in the Weierstrass form
       self.a = a
-      self.d = d
+      self.b = b
 
-      self.disc = a * d * (a - d) * (a - d) * (a - d) * (a - d)
-      self.j = 16 * (a * a + 14 * a * d + d * d) * (a * a + 14 * a * d + d * d) * \
-               (a * a + 14 * a * d + d * d) / self.disc
+      self.discriminant = -16 * (4 * a*a*a + 27 * b * b)
       if not self.isSmooth():
          raise Exception("The curve %s is not smooth!" % self)
 
 
    def isSmooth(self):
-      return self.disc != 0
+      return self.discriminant != 0
 
 
    def testPoint(self, x, y):
-      return self.a * x * x + y*y == 1 + self.d * x * x * y * y
+      return y*y == x*x*x + self.a * x + self.b
 
 
    def __str__(self):
-      return '%sx^2 + y^2 = 1 + %sx^2y^2' % (self.a, self.d)
+      return 'y^2 = x^3 + %sx + %s' % (self.a, self.b)
 
 
    def __repr__(self):
@@ -29,7 +27,7 @@ class TwistedEdwardsCurve(object):
 
 
    def __eq__(self, other):
-      return (self.a, self.d) == (other.a, other.d)
+      return (self.a, self.b) == (other.a, other.b)
 
 
 
@@ -63,13 +61,23 @@ class Point(object):
 
       x_1, y_1, x_2, y_2 = self.x, self.y, Q.x, Q.y
 
-      x3 = ((x1 * y2) + (y1 * x2)) / (1 + d * x1 * x2 * y1 * y2)
-      y3 = ((y1 * y2) + (x1 * x2)) / (1 - d * x1 * x2 * y1 * y2)
+      if (x_1, y_1) == (x_2, y_2):
+         if y_1 == 0:
+            return Ideal(self.curve)
 
-      return Point(self.curve, x3, y3)
+         # slope of the tangent line
+         m = (3 * x_1 * x_1 + self.curve.a) / (2 * y_1)
+      else:
+         if x_1 == x_2:
+            return Ideal(self.curve)
 
-   def double(self):
-      return self + self
+         # slope of the secant line
+         m = (y_2 - y_1) / (x_2 - x_1)
+
+      x_3 = m*m - x_2 - x_1
+      y_3 = m*(x_3 - x_1) + y_1
+
+      return Point(self.curve, x_3, -y_3)
 
 
    def __sub__(self, Q):
@@ -78,26 +86,25 @@ class Point(object):
    def __mul__(self, n):
       if not isinstance(n, int):
          raise Exception("Can't scale a point by something which isn't an int!")
+      else:
+         if n < 0:
+             return -self * -n
+         if n == 0:
+             return Ideal(self.curve)
+         else:
+             Q = self
+             R = self if n & 1 == 1 else Ideal(self.curve)
 
-      if n < 0:
-         return -self * -n
+             i = 2
+             while i <= n:
+                 Q = Q + Q
 
-      if n == 0:
-         return Ideal(self.curve)
+                 if n & i == i:
+                     R = Q + R
 
-      Q = self
-      R = self if n & 1 == 1 else Ideal(self.curve)
+                 i = i << 1
 
-      i = 2
-      while i <= n:
-         Q += Q
-
-         if n & i == i:
-             R += Q
-
-         i = i << 1
-
-      return R
+             return R
 
 
    def __rmul__(self, n):
@@ -110,7 +117,7 @@ class Point(object):
       if type(other) is Ideal:
          return False
 
-      return self.x, self.y == other.x, other.y
+      return (self.x, self.y) == (other.x, other.y)
 
    def __ne__(self, other):
       return not self == other
@@ -118,7 +125,7 @@ class Point(object):
    def __getitem__(self, index):
       return [self.x, self.y][index]
 
-# TODO?
+
 class Ideal(Point):
    def __init__(self, curve):
       self.curve = curve

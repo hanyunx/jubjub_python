@@ -4,7 +4,7 @@ except ImportError:
     from itertools import izip_longest as zip_longest
 import fractions
 
-from numbertype import *
+from .numbertype import *
 
 # strip all copies of elt from the end of the list
 def strip(L, elt):
@@ -41,6 +41,7 @@ def polynomialsOver(field=fractions.Fraction):
             self.coefficients = c
 
          self.coefficients = strip(self.coefficients, field(0))
+         self.indeterminate = 't'
 
 
       def isZero(self): return self.coefficients == []
@@ -49,7 +50,7 @@ def polynomialsOver(field=fractions.Fraction):
          if self.isZero():
             return '0'
 
-         return ' + '.join(['%s x^%d' % (a,i) if i > 0 else '%s'%a
+         return ' + '.join(['%s %s^%d' % (a, self.indeterminate, i) if i > 0 else '%s'%a
                               for i,a in enumerate(self.coefficients)])
 
 

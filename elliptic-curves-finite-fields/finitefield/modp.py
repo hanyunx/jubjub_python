@@ -1,6 +1,6 @@
 
-from euclidean import *
-from numbertype import *
+from .euclidean import *
+from .numbertype import *
 
 # so all IntegersModP are instances of the same base class
 class _Modular(FieldElement):
