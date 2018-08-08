@@ -34,10 +34,11 @@ class TwistedEdwardsCurve(object):
 
 
 class Point(object):
-   def __init__(self, curve, x, y):
+   def __init__(self, curve, x, y, z):
       self.curve = curve # the curve containing this point
       self.x = x
       self.y = y
+      self.z = z
 
       if not curve.testPoint(x,y):
          raise Exception("The point %s is not on the given curve %s!" % (self, curve))
@@ -52,24 +53,65 @@ class Point(object):
 
 
    def __neg__(self):
-      return Point(self.curve, -self.x, self.y)
+      return Point(self.curve, self.x, -self.y)
 
 
    def __add__(self, Q):
+      
+      # source 2008 Bernstein--Birkner--Joye--Lange--Peters http://eprint.iacr.org/2008/013 Section 6, plus Z2=1, plus Z1=1, plus standard simplification
+      # assume Z1 = 1
+      # assume Z2 = 1
+      # compute C = X1 X2
+      # compute D = Y1 Y2
+      # compute E = d C D
+      # compute X3 = (1-E) ((X1+Y1)(X2+Y2)-C-D)
+      # compute Y3 = (1+E) (D-a C)
+      # compute Z3 = 1-E^2
+
       if self.curve != Q.curve:
          raise Exception("Can't add points on different curves!")
       if isinstance(Q, Ideal):
          return self
 
-      x1, y1, x2, y2 = self.x, self.y, Q.x, Q.y
+      x1, y1, z1 = self.x, self.y, 1
+      x2, y2, z2 = Q.x, Q.y, 1
 
-      x3 = ((x1 * y2) + (y1 * x2)) / (1 + self.curve.d * x1 * x2 * y1 * y2)
-      y3 = ((y1 * y2) + (x1 * x2)) / (1 - self.curve.d * x1 * x2 * y1 * y2)
+      c = x1 * x2
+      d = y1 * y2
+      e = curve.d * c * d
 
-      return Point(self.curve, x3, y3)
+      x3 = (1 - e) * ((x1 + y1) * (x2 + y2) - c - d)
+      y3 = (1 + e) * (d + C)
+      z3 = 1 - e * e
+      
+      return Point(self.curve, x3, y3, z3)
+
 
    def double(self):
-      return self + self
+      # source 2008 Bernstein--Birkner--Joye--Lange--Peters http://eprint.iacr.org/2008/013, plus Z1=1, plus standard simplification
+      # assume Z1 = 1
+      # compute B = (X1+Y1)^2
+      # compute C = X1^2
+      # compute D = Y1^2
+      # compute E = a C
+      # compute F = E + D
+      # compute X3 = (B-C-D)(F-2)
+      # compute Y3 = F(E-D)
+      # compute Z3 = F^2-2 F
+
+      x1, y1, z1 = self.x, self.y, 1
+
+      b = (x1 + y1) * (x1 + y1)
+      c = x1 * x1
+      d = y1 * y1
+      e = -c
+      f = e + d
+
+      x3 = (b - c - d) * (F - 2)
+      y3 = f * (e - d)
+      z3 = f * f - 2 * f
+
+      return Point(self.curve, x3, y3, z3)
 
 
    def __sub__(self, Q):

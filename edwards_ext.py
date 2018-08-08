@@ -34,10 +34,12 @@ class TwistedEdwardsCurve(object):
 
 
 class Point(object):
-   def __init__(self, curve, x, y):
+   def __init__(self, curve, x, y, t, z):
       self.curve = curve # the curve containing this point
       self.x = x
       self.y = y
+      self.t = t
+      self.z = z
 
       if not curve.testPoint(x,y):
          raise Exception("The point %s is not on the given curve %s!" % (self, curve))
@@ -52,24 +54,61 @@ class Point(object):
 
 
    def __neg__(self):
-      return Point(self.curve, -self.x, self.y)
+      return Point(self.curve, self.x, -self.y)
 
 
    def __add__(self, Q):
+      # See "Twisted Edwards Curves Revisited"
+      #       Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
+      #       3.1 Unified Addition in E^e
+      # the same with jubjub
+
       if self.curve != Q.curve:
          raise Exception("Can't add points on different curves!")
       if isinstance(Q, Ideal):
          return self
 
-      x1, y1, x2, y2 = self.x, self.y, Q.x, Q.y
+      x1, y1, t1, z1 = self.x, self.y, self.t, self.z
+      x2, y2, t2, z2 = Q.x, Q.y, Q.t, Q.z
 
-      x3 = ((x1 * y2) + (y1 * x2)) / (1 + self.curve.d * x1 * x2 * y1 * y2)
-      y3 = ((y1 * y2) + (x1 * x2)) / (1 - self.curve.d * x1 * x2 * y1 * y2)
+      a = x1 * x2
+      b = y1 * y2
+      c = curve.d * t1 * t2
+      d = z1 * z2
+      h = b + a
+      e = (x1 + y1) * (x2 + y2) - h
+      f = 1 - c
+      g = 1 + c
 
-      return Point(self.curve, x3, y3)
+      x3 = e * f
+      y3 = g * h
+      t3 = e * h
+      z3 = f * g
+      
+      return Point(self.curve, x3, y3, t3, z3)
 
    def double(self):
-      return self + self
+      # See "Twisted Edwards Curves Revisited"
+      #       Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
+      #       Section 3.3
+      #       http://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
+      # the same with jubjub
+
+      a = self.x * self.x
+      b = self.y * self.y
+      c = 2 * self.z * self.z
+      d = -a
+      e = (self.x + self.y) * (self.x + self.y) - a - b
+      g = d + b
+      f = g - c
+      h = d - b
+
+      x3 = e * f
+      y3 = g * h
+      t3 = e * h
+      z3 = f * g
+
+      return Point(self.curve, x3, y3, t3, z3)
 
 
    def __sub__(self, Q):
