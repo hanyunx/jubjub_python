@@ -1,6 +1,3 @@
-import sys
-sys.path += ['elliptic-curves-finite-fields']
-
 from finitefield.finitefield import FiniteField
 from edwards import *
 from edwards_proj import *
