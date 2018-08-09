@@ -1,7 +1,7 @@
 # Twisted Edwards Curve
 class TwistedEdwardsCurve(object):
    def __init__(self, a, d):
-      # assume we're already in the Weierstrass form
+      
       self.a = a
       self.d = d
 

@@ -1,7 +1,11 @@
+from finitefield.finitefield import FiniteField
+
+q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+Fq = FiniteField(q, 1)
+
 # Twisted Edwards Curve
-class TwistedEdwardsCurve(object):
+class ProjectiveEdwards(object):
    def __init__(self, a, d):
-      # assume we're already in the Weierstrass form
       self.a = a
       self.d = d
 
@@ -34,11 +38,10 @@ class TwistedEdwardsCurve(object):
 
 
 class Point(object):
-   def __init__(self, curve, x, y, z):
+   def __init__(self, curve, x, y):
       self.curve = curve # the curve containing this point
       self.x = x
       self.y = y
-      self.z = z
 
       if not curve.testPoint(x,y):
          raise Exception("The point %s is not on the given curve %s!" % (self, curve))
@@ -53,20 +56,20 @@ class Point(object):
 
 
    def __neg__(self):
-      return Point(self.curve, self.x, -self.y)
+      return Point(self.curve, -self.x, self.y)
 
 
    def __add__(self, Q):
-      
+      # Assumptions: Z1=1 and Z2=1.
+      # Cost: 6M + 1S + 1*a + 1*d + 8add.
       # source 2008 Bernstein--Birkner--Joye--Lange--Peters http://eprint.iacr.org/2008/013 Section 6, plus Z2=1, plus Z1=1, plus standard simplification
-      # assume Z1 = 1
-      # assume Z2 = 1
+      # assume Z1 = 1, Z2 = 1
       # compute C = X1 X2
-      # compute D = Y1 Y2
-      # compute E = d C D
-      # compute X3 = (1-E) ((X1+Y1)(X2+Y2)-C-D)
-      # compute Y3 = (1+E) (D-a C)
-      # compute Z3 = 1-E^2
+      #         D = Y1 Y2
+      #         E = d C D
+      #         X3 = (1-E) ((X1+Y1)(X2+Y2)-C-D)
+      #         Y3 = (1+E) (D-a C)
+      #         Z3 = 1-E^2
 
       if self.curve != Q.curve:
          raise Exception("Can't add points on different curves!")
@@ -78,26 +81,28 @@ class Point(object):
 
       c = x1 * x2
       d = y1 * y2
-      e = curve.d * c * d
+      e = self.curve.d * c * d
 
       x3 = (1 - e) * ((x1 + y1) * (x2 + y2) - c - d)
-      y3 = (1 + e) * (d + C)
+      y3 = (1 + e) * (d + c)
       z3 = 1 - e * e
       
-      return Point(self.curve, x3, y3, z3)
+      return Point(self.curve, x3/z3, y3/z3)
 
 
    def double(self):
-      # source 2008 Bernstein--Birkner--Joye--Lange--Peters http://eprint.iacr.org/2008/013, plus Z1=1, plus standard simplification
+      # Assumptions: Z1=1.
+      # Cost: 2M + 4S + 1*a + 7add + 1*2.
+      # https://hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#doubling-mdbl-2008-bbjlp
       # assume Z1 = 1
       # compute B = (X1+Y1)^2
-      # compute C = X1^2
-      # compute D = Y1^2
-      # compute E = a C
-      # compute F = E + D
-      # compute X3 = (B-C-D)(F-2)
-      # compute Y3 = F(E-D)
-      # compute Z3 = F^2-2 F
+      #         C = X1^2
+      #         D = Y1^2
+      #         E = a C = -C
+      #         F = E + D
+      #         X3 = (B-C-D)(F-2)
+      #         Y3 = F(E-D)
+      #         Z3 = F^2-2F
 
       x1, y1, z1 = self.x, self.y, 1
 
@@ -107,11 +112,16 @@ class Point(object):
       e = -c
       f = e + d
 
-      x3 = (b - c - d) * (F - 2)
+      x3 = (b - c - d) * (f - 2)
       y3 = f * (e - d)
       z3 = f * f - 2 * f
 
-      return Point(self.curve, x3, y3, z3)
+      X3 = x3*(Fq(z3).inverse())
+      Y3 = y3*(Fq(z3).inverse())
+
+      return Point(self.curve, X3, Y3)
+      # return Point(self.curve, x3/z3, y3/z3)
+      # return self + self
 
 
    def __sub__(self, Q):

@@ -1,7 +1,11 @@
+from finitefield.finitefield import FiniteField
+
+q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+Fq = FiniteField(q, 1)
+
 # Twisted Edwards Curve
-class TwistedEdwardsCurve(object):
+class ExtendedEdwards(object):
    def __init__(self, a, d):
-      # assume we're already in the Weierstrass form
       self.a = a
       self.d = d
 
@@ -34,12 +38,10 @@ class TwistedEdwardsCurve(object):
 
 
 class Point(object):
-   def __init__(self, curve, x, y, t, z):
+   def __init__(self, curve, x, y):
       self.curve = curve # the curve containing this point
       self.x = x
       self.y = y
-      self.t = t
-      self.z = z
 
       if not curve.testPoint(x,y):
          raise Exception("The point %s is not on the given curve %s!" % (self, curve))
@@ -54,26 +56,27 @@ class Point(object):
 
 
    def __neg__(self):
-      return Point(self.curve, self.x, -self.y)
+      return Point(self.curve, -self.x, self.y)
 
 
    def __add__(self, Q):
-      # See "Twisted Edwards Curves Revisited"
-      #       Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
-      #       3.1 Unified Addition in E^e
-      # the same with jubjub
+      # https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html
+      # Assumptions: Z1=1 and Z2=1.
+      # Cost: 7M + 1S + 1*a + 1*d + 8add.
+      # Cost: 7M + 1S + 1*a + 7add dependent upon the first point.
+      # Strongly unified.
 
       if self.curve != Q.curve:
          raise Exception("Can't add points on different curves!")
       if isinstance(Q, Ideal):
          return self
 
-      x1, y1, t1, z1 = self.x, self.y, self.t, self.z
-      x2, y2, t2, z2 = Q.x, Q.y, Q.t, Q.z
+      x1, y1, t1, z1 = self.x, self.y, self.x * self.y, 1
+      x2, y2, t2, z2 = Q.x, Q.y, Q.x * Q.y, 1
 
       a = x1 * x2
       b = y1 * y2
-      c = curve.d * t1 * t2
+      c = self.curve.d * t1 * t2
       d = z1 * z2
       h = b + a
       e = (x1 + y1) * (x2 + y2) - h
@@ -85,18 +88,17 @@ class Point(object):
       t3 = e * h
       z3 = f * g
       
-      return Point(self.curve, x3, y3, t3, z3)
+      return Point(self.curve, x3/z3, y3/z3)
 
    def double(self):
-      # See "Twisted Edwards Curves Revisited"
-      #       Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
-      #       Section 3.3
-      #       http://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
-      # the same with jubjub
-
+      # See "Twisted Edwards Curves Revisited" Section 3.3
+      # http://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
+      # Cost: 4M + 4S + 1*a + 6add + 1*2.
+      # assume: Z = 1
+      
       a = self.x * self.x
       b = self.y * self.y
-      c = 2 * self.z * self.z
+      c = 2
       d = -a
       e = (self.x + self.y) * (self.x + self.y) - a - b
       g = d + b
@@ -108,7 +110,11 @@ class Point(object):
       t3 = e * h
       z3 = f * g
 
-      return Point(self.curve, x3, y3, t3, z3)
+      X3 = x3*(Fq(z3).inverse())
+      Y3 = y3*(Fq(z3).inverse())
+
+      return Point(self.curve, X3, Y3)
+      # return Point(self.curve, x3/z3, y3/z3)
 
 
    def __sub__(self, Q):
