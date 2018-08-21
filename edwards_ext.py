@@ -25,7 +25,9 @@ class ExtendedEdwards(object):
 
 
    def __str__(self):
-      return '%sx^2 + y^2 = 1 + %sx^2y^2' % (self.a, self.d)
+      # return '%sx^2 + y^2 = 1 + %sx^2y^2' % (self.a, self.d)
+      return "Extended: "
+
 
 
    def __repr__(self):

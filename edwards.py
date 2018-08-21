@@ -1,7 +1,6 @@
 # Twisted Edwards Curve
 class TwistedEdwardsCurve(object):
    def __init__(self, a, d):
-      
       self.a = a
       self.d = d
 
@@ -21,7 +20,8 @@ class TwistedEdwardsCurve(object):
 
 
    def __str__(self):
-      return '%sx^2 + y^2 = 1 + %sx^2y^2' % (self.a, self.d)
+      # return '%sx^2 + y^2 = 1 + %sx^2y^2' % (self.a, self.d)
+      return "Original: "
 
 
    def __repr__(self):
