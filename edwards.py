@@ -118,6 +118,21 @@ class Point(object):
    def __getitem__(self, index):
       return [self.x, self.y][index]
 
+   # def get_for_y(self, x, sign):
+
+   #     # Given a y on the curve, x^2 = (y^2 - 1) / (dy^2 + 1)
+   #     # This is defined for all valid y-coordinates,
+   #     # as dy^2 + 1 = 0 has no solution in the field
+
+   #     x2 = Field((y ** 2 - 1) / (self.curve.d * (y ** 2) + 1))
+   #     if sign:
+   #        print("x: ", x2.sqrt(), "y: ", Field(y))
+   #        return Point(Field(x2).sqrt(), Field(y))
+   #     else:
+   #        return Point((-Field(x2)).sqrt(), Field(y))
+
+
+
 # TODO?
 class Ideal(Point):
    def __init__(self, curve):
